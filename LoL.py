@@ -8,6 +8,7 @@ import os
 from telebot import types
 from urllib.parse import urlparse
 import ipaddress
+import psutil
 
 # Initialize bot
 bot = telebot.TeleBot('7140094105:AAF53GsI95nO5jjtUj8-LBID9NGaTcQNIXI')  # Replace with your actual token
@@ -15,7 +16,7 @@ bot = telebot.TeleBot('7140094105:AAF53GsI95nO5jjtUj8-LBID9NGaTcQNIXI')  # Repla
 # Constants
 INSTRUCTOR_IDS = ["1549748318", "1662672529"]  # Replace with your instructor IDs
 STUDY_GROUP_ID = "-1002658128612"             # Replace with your group ID
-LEARNING_CHANNEL = "@HUNTERxPARTNER99"        # Replace with your channel
+LEARNING_CHANNEL = "@HUNTERAloneboy99"        # Replace with your channel
 LAB_REPORTS_DIR = "lab_reports"
 TEST_COOLDOWN = 30
 DAILY_TEST_LIMIT = 7
@@ -44,6 +45,7 @@ def create_main_keyboard(message=None):
         types.KeyboardButton("🌐 𝐍𝐞𝐭𝐰𝐨𝐫𝐤 𝐓𝐞𝐬𝐭"),
         types.KeyboardButton("🔬 𝐂𝐨𝐧𝐝𝐮𝐜𝐭 𝐄𝐱𝐩𝐞𝐫𝐢𝐦𝐞𝐧𝐭"),
         types.KeyboardButton("📊 𝐕𝐢𝐞𝐰 𝐏𝐫𝐨𝐠𝐫𝐞𝐬𝐬"),
+        types.KeyboardButton("🧠 𝐂𝐏𝐔 𝐔𝐬𝐚𝐠𝐞"),
         types.KeyboardButton("📝 𝐒𝐮𝐛𝐦𝐢𝐭 𝐑𝐞𝐩𝐨𝐫𝐭"),
     ]
     if message and str(message.from_user.id) in INSTRUCTOR_IDS:
@@ -66,6 +68,9 @@ def create_instructor_keyboard():
     markup = types.ReplyKeyboardMarkup(row_width=2, resize_keyboard=True, one_time_keyboard=False)
     buttons = [
         types.KeyboardButton("📢 𝐒𝐞𝐧𝐝 𝐍𝐨𝐭𝐢𝐜𝐞"),
+        types.KeyboardButton("➕ 𝐀𝐝𝐝 𝐀𝐝𝐦𝐢𝐧"),
+        types.KeyboardButton("➖ 𝐑𝐞𝐦𝐨𝐯𝐞 𝐀𝐝𝐦𝐢𝐧"),
+        types.KeyboardButton("📋 𝐋𝐢𝐬𝐭 𝐀𝐝𝐦𝐢𝐧𝐬"),
         types.KeyboardButton("➕ 𝐀𝐝𝐝 𝐆𝐫𝐨𝐮𝐩"),
         types.KeyboardButton("➖ 𝐑𝐞𝐦𝐨𝐯𝐞 𝐆𝐫𝐨𝐮𝐩"),
         types.KeyboardButton("📋 𝐋𝐢𝐬𝐭 𝐆𝐫𝐨𝐮𝐩𝐬"),
@@ -82,7 +87,7 @@ def create_instructor_keyboard():
 def create_progress_bar(progress, total, length=20):
     filled = int(length * progress // total)
     empty = length - filled
-    bar = '█' * filled + '░' * empty
+    bar = '🥭' * filled + '-' * empty
     percent = min(100, int(100 * progress / total))
     return f"📈 𝐏𝐫𝐨𝐠𝐫𝐞𝐬𝐬: {bar} {percent}%"
 
@@ -252,37 +257,101 @@ def auto_reset_daily_limits():
             student_data[user_id]['last_reset'] = datetime.datetime.now()
         save_student_data()
 
+ADMINS_FILE = "admins.txt"
+ADMIN_IDS = set()
+
+def load_admins():
+    global ADMIN_IDS
+    if os.path.exists(ADMINS_FILE):
+        with open(ADMINS_FILE, "r") as f:
+            ADMIN_IDS = set(line.strip() for line in f if line.strip())
+
+def save_admins():
+    with open(ADMINS_FILE, "w") as f:
+        for admin_id in ADMIN_IDS:
+            f.write(f"{admin_id}\n")
+
+# Add buttons in create_instructor_keyboard()
+# types.KeyboardButton("➕ 𝐀𝐝𝐝 𝐀𝐝𝐦𝐢𝐧"),
+# types.KeyboardButton("➖ 𝐑𝐞𝐦𝐨𝐯𝐞 𝐀𝐝𝐦𝐢𝐧"),
+# types.KeyboardButton("📋 𝐋𝐢𝐬𝐭 𝐀𝐝𝐦𝐢𝐧𝐬"),
+
+@bot.message_handler(func=lambda msg: msg.text == "➕ 𝐀𝐝𝐝 𝐀𝐝𝐦𝐢𝐧")
+def ask_add_admin(message):
+    if str(message.from_user.id) not in INSTRUCTOR_IDS:
+        bot.reply_to(message, "🚫 𝐀𝐜𝐜𝐞𝐬𝐬 𝐃𝐞𝐧𝐢𝐞𝐝")
+        return
+    msg = bot.send_message(message.chat.id, "➕ 𝐒𝐞𝐧𝐝 𝐓𝐞𝐥𝐞𝐠𝐫𝐚𝐦 𝐔𝐬𝐞𝐫 𝐈𝐃 𝐭𝐨 𝐀𝐝𝐝 𝐚𝐬 𝐀𝐝𝐦𝐢𝐧:")
+    bot.register_next_step_handler(msg, process_add_admin)
+
+def process_add_admin(message):
+    new_id = message.text.strip()
+    if not new_id.isdigit():
+        bot.reply_to(message, "❌ 𝐈𝐧𝐯𝐚𝐥𝐢𝐝 𝐈𝐃. 𝐏𝐥𝐞𝐚𝐬𝐞 𝐬𝐞𝐧𝐝 𝐧𝐮𝐦𝐞𝐫𝐢𝐜 𝐔𝐬𝐞𝐫 𝐈𝐃.")
+        return
+    if new_id in ADMIN_IDS:
+        bot.reply_to(message, f"ℹ️ 𝐀𝐝𝐦𝐢𝐧 𝐈𝐃 `{new_id}` 𝐚𝐥𝐫𝐞𝐚𝐝𝐲 𝐞𝐱𝐢𝐬𝐭𝐬.", parse_mode="Markdown")
+        return
+    ADMIN_IDS.add(new_id)
+    save_admins()
+    bot.reply_to(message, f"✅ 𝐀𝐝𝐝𝐞𝐝 𝐀𝐝𝐦𝐢𝐧 𝐈𝐃: `{new_id}`", parse_mode="Markdown")
+
+@bot.message_handler(func=lambda msg: msg.text == "➖ 𝐑𝐞𝐦𝐨𝐯𝐞 𝐀𝐝𝐦𝐢𝐧")
+def ask_remove_admin(message):
+    if str(message.from_user.id) not in INSTRUCTOR_IDS:
+        bot.reply_to(message, "🚫 𝐀𝐜𝐜𝐞𝐬𝐬 𝐃𝐞𝐧𝐢𝐞𝐝")
+        return
+    msg = bot.send_message(message.chat.id, "➖ 𝐒𝐞𝐧𝐝 𝐔𝐬𝐞𝐫 𝐈𝐃 𝐭𝐨 𝐑𝐞𝐦𝐨𝐯𝐞 𝐟𝐫𝐨𝐦 𝐀𝐝𝐦𝐢𝐧:")
+    bot.register_next_step_handler(msg, process_remove_admin)
+
+def process_remove_admin(message):
+    remove_id = message.text.strip()
+    if remove_id in ADMIN_IDS:
+        ADMIN_IDS.remove(remove_id)
+        save_admins()
+        bot.reply_to(message, f"✅ 𝐑𝐞𝐦𝐨𝐯𝐞𝐝 𝐀𝐝𝐦𝐢𝐧 𝐈𝐃: `{remove_id}`", parse_mode="Markdown")
+    else:
+        bot.reply_to(message, f"❌ 𝐀𝐝𝐦𝐢𝐧 𝐈𝐃 `{remove_id}` 𝐧𝐨𝐭 𝐟𝐨𝐮𝐧𝐝", parse_mode="Markdown")
+
+@bot.message_handler(func=lambda msg: msg.text == "📋 𝐋𝐢𝐬𝐭 𝐀𝐝𝐦𝐢𝐧𝐬")
+def list_admins(message):
+    if str(message.from_user.id) not in INSTRUCTOR_IDS:
+        bot.reply_to(message, "🚫 𝐀𝐜𝐜𝐞𝐬𝐬 𝐃𝐞𝐧𝐢𝐞𝐝")
+        return
+    if not ADMIN_IDS:
+        bot.reply_to(message, "📋 𝐍𝐨 𝐚𝐝𝐦𝐢𝐧𝐬 𝐡𝐚𝐯𝐞 𝐛𝐞𝐞𝐧 𝐚𝐝𝐝𝐞𝐝 𝐲𝐞𝐭.")
+        return
+    admin_list = "\n".join(f"• `{aid}`" for aid in ADMIN_IDS)
+    bot.send_message(message.chat.id, f"📋 𝐂𝐮𝐫𝐫𝐞𝐧𝐭 𝐀𝐝𝐦𝐢𝐧𝐬:\n\n{admin_list}", parse_mode="Markdown")
 # ======================
 # COMMAND HANDLERS
 # ======================
 
 @bot.message_handler(commands=['start'])
-@membership_required
 def welcome_student(message):
     user_name = message.from_user.first_name
     response = f"""
-╔════════════════════════════╗
-   🔥 *ALONEBOY NETWORK LABORATORY* 🔥  
-╚═════════���══════════════════╝  
-*"Where Data Bows to Mastery"*  
+╭━━━━━━━〔 *ALONEBOY NETWORK LABORATORY* 〕━━━━━━━╮
+         *“ᴡʜᴇʀᴇ ᴅᴀᴛᴀ ʙᴏᴡs ᴛᴏ ᴍᴀsᴛᴇʀʏ”*  
+╰━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╯
 
-   ✧༺ *W E L C O M E* ༻✧  
-       **{user_name}**  
+      🛡️ *ACCESS LEVEL: PREMIUM INITIATED*  
+              𝘞𝘦𝘭𝘤𝘰𝘮𝘦, *{user_name}*  
 
-► *principal -----------@GODxAloneBOY*  
-► *Professor -----------@RAJOWNER90* 
+*─────────────[ 𝘓𝘈𝘉 𝘋𝘐𝘙 ]─────────────*  
+╰➤ *Chief Architect:* [@GODxAloneBOY]  
 
-➤ [Join Official Training Channel]({LEARNING_CHANNEL})  
-➤ Try for /help to all details 
-▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂  
-🔒 *LAB LAWS* (Violators will be firewalled):  
-- 𝟭. 𝗡𝗼 𝗰𝗼𝗺𝗺𝗮𝗻𝗱𝘀 �𝗶𝘁𝗵𝗼𝘂𝘁 𝗮𝘂𝘁𝗵𝗼𝗿𝗶𝘇𝗮𝘁𝗶𝗼𝗻  
-- 𝟮. 𝗗𝗮𝗶𝗹𝘆 𝗾𝘂𝗼𝘁𝗮𝘀: **{DAILY_TEST_LIMIT} experiments**  
-- 𝟯. 𝗖𝗼𝗼𝗹𝗱𝗼𝘄𝗻: **{TEST_COOLDOWN} sec** between trials    
+╰➤ *Command Center:* [Join Channel]({LEARNING_CHANNEL})  
+╰➤ *Systems Manual:* Type /help  
+───────────────────────────────────  
+🧾 *LAB PROTOCOLS:*  
+1. *⛔ No Commands Without Authorization*  
+2. *⚗️ Daily Limit:* `{DAILY_TEST_LIMIT}` Experiments  
+3. *⏳ Cooldown Between Tests:* `{TEST_COOLDOWN} sec`  
 
-▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄  
-🔮 *Initiation Complete*:  
-Proceed to [{LEARNING_CHANNEL}]({LEARNING_CHANNEL}) for your first mission.  
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━  
+✅ *Access Tunnel Opened*  
+➡️ Begin your mission at [{LEARNING_CHANNEL}]({LEARNING_CHANNEL})
 """
     bot.send_message(
         message.chat.id, 
@@ -451,7 +520,7 @@ def process_network_test(message):
         def run_command():
             global is_test_in_progress, last_test_time
             try:
-                subprocess.run(["./Rahul", target, str(port), str(duration)], check=True)
+                subprocess.run(["./RAJ", target, str(port), str(duration)], check=True)
                 last_test_time = datetime.datetime.now()
 
                 bot.send_message(
@@ -847,6 +916,29 @@ def handle_notice_confirmation(call):
     )
 
     bot.send_message(call.message.chat.id, report, reply_markup=create_instructor_keyboard())
+
+import psutil
+@bot.message_handler(func=lambda msg: msg.text == "🧠 𝐂𝐏𝐔 𝐔𝐬𝐚𝐠𝐞")
+def cpu_usage_button_handler(message):
+    if str(message.from_user.id) not in INSTRUCTOR_IDS:
+        bot.reply_to(message, "🚫 𝐀𝐜𝐜𝐞𝐬𝐬 𝐃𝐞𝐧𝐢𝐞𝐝")
+        return
+
+    try:
+        cpu_percent = psutil.cpu_percent(interval=1)
+        cpu_count = psutil.cpu_count()
+        load_avg = psutil.getloadavg() if hasattr(psutil, 'getloadavg') else ("N/A", "N/A", "N/A")
+
+        reply = (
+            f"🧠 *𝐕𝐏𝐒 𝐂𝐏𝐔 𝐔𝐬𝐚𝐠𝐞*\n\n"
+            f"🔢 *𝐓𝐨𝐭𝐚𝐥 𝐂𝐨𝐫𝐞𝐬:* {cpu_count}\n"
+            f"📊 *𝐂𝐮𝐫𝐫𝐞𝐧𝐭 𝐔𝐬𝐚𝐠𝐞:* {cpu_percent}%\n"
+            f"📉 *𝐋𝐨𝐚𝐝 𝐀𝐯𝐞𝐫𝐚𝐠𝐞 (𝟏/𝟓/𝟏𝟓 𝐦𝐢𝐧):* {load_avg[0]}, {load_avg[1]}, {load_avg[2]}"
+        )
+
+        bot.send_message(message.chat.id, reply, parse_mode="Markdown")
+    except Exception as e:
+        bot.send_message(message.chat.id, f"⚠️ 𝐄𝐫𝐫𝐨𝐫 𝐟𝐞𝐭𝐜𝐡𝐢𝐧𝐠 𝐂𝐏𝐔 𝐝𝐚𝐭𝐚:\n{str(e)}")
 
 # ======================
 # INITIALIZATION
