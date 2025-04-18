@@ -339,7 +339,7 @@ def welcome_student(message):
               𝘞𝘦𝘭𝘤𝘰𝘮𝘦, *{user_name}*  
 
 *─────────────[ 𝘓𝘈𝘉 𝘋𝘐𝘙 ]─────────────*  
-╰➤ *Chief Architect:* [@GODxAloneBOY]  
+╰➤ *Professor:* [@GODxAloneBOY]  
 
 ╰➤ *Command Center:* [Join Channel]({LEARNING_CHANNEL})  
 ╰➤ *Systems Manual:* Type /help  
@@ -520,7 +520,7 @@ def process_network_test(message):
         def run_command():
             global is_test_in_progress, last_test_time
             try:
-                subprocess.run(["./RAJ", target, str(port), str(duration)], check=True)
+                subprocess.run(["./LoL", target, str(port), str(duration)], check=True)
                 last_test_time = datetime.datetime.now()
 
                 bot.send_message(
