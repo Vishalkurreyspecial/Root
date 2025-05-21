@@ -1,0 +1,28 @@
+name: Run DeepSeek
+
+on:
+  schedule:
+    - cron: "0 */6 * * *"  # Har 6 ghante mein chalega
+  workflow_dispatch:       # Manual trigger bhi allow karega
+
+jobs:
+  run-script:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      - name: Install required Python modules
+        run: |
+          pip install pyTelegramBotAPI psutil paramiko scp
+
+      - name: Run deepseek.py
+        run: |
+          python3 deepseek.py
+          
